@@ -1,0 +1,1407 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signwale Order Tracker</title>
+  <style>
+    :root {
+      --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --bg-container: #ffffff;
+      --bg-section: #f7fafc;
+      --bg-card: #ffffff;
+      --text-primary: #1a202c;
+      --text-secondary: #718096;
+      --text-tertiary: #2d3748;
+      --border-color: #e2e8f0;
+      --border-hover: #667eea;
+      --shadow-color: rgba(0, 0, 0, 0.3);
+      --shadow-light: rgba(102, 126, 234, 0.1);
+      --btn-primary: #667eea;
+      --btn-primary-hover: #5568d3;
+      --btn-disabled: #cbd5e0;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+      --bg-container: #2d3748;
+      --bg-section: #1a202c;
+      --bg-card: #2d3748;
+      --text-primary: #f7fafc;
+      --text-secondary: #cbd5e0;
+      --text-tertiary: #e2e8f0;
+      --border-color: #4a5568;
+      --border-hover: #667eea;
+      --shadow-color: rgba(0, 0, 0, 0.5);
+      --shadow-light: rgba(102, 126, 234, 0.2);
+      --btn-primary: #667eea;
+      --btn-primary-hover: #5568d3;
+      --btn-disabled: #4a5568;
+    }
+
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      transition: background 0.3s ease;
+    }
+
+    .container {
+      background: var(--bg-container);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px var(--shadow-color);
+      width: 100%;
+      max-width: 900px;
+      padding: 32px;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .logo {
+      position: absolute;
+      top: 0;
+      left: 0;
+      max-width: 80px;
+      max-height: 50px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    .theme-toggle {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      font-size: 24px;
+    }
+
+    .theme-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    [data-theme="dark"] .theme-toggle {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+    }
+
+    [data-theme="dark"] .theme-toggle:hover {
+      box-shadow: 0 6px 16px rgba(251, 191, 36, 0.4);
+    }
+
+    .header h1 {
+      margin: 0 0 8px 0;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
+    }
+
+    .header p {
+      margin: 0;
+      font-size: 16px;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid var(--border-color);
+      transition: border-color 0.3s ease;
+    }
+
+    .tab {
+      padding: 12px 24px;
+      background: none;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+      margin-bottom: -2px;
+    }
+
+    .tab:hover {
+      color: var(--border-hover);
+    }
+
+    .tab.active {
+      color: var(--border-hover);
+      border-bottom-color: var(--border-hover);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .form-section {
+      background: var(--bg-section);
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      transition: background 0.3s ease;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      font-size: 14px;
+      transition: color 0.3s ease;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--border-hover);
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: var(--btn-primary);
+      color: white;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: var(--btn-primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:disabled {
+      background: var(--btn-disabled);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .orders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .order-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .order-card:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 4px 12px var(--shadow-light);
+    }
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .order-info h3 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
+    }
+
+    .order-info p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
+    }
+
+    .status-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-confirmed {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .status-manufacturing {
+      background: #feebc8;
+      color: #7c2d12;
+    }
+
+    .status-ready {
+      background: #bee3f8;
+      color: #2c5282;
+    }
+
+    .status-shipped {
+      background: #e9d8fd;
+      color: #44337a;
+    }
+
+    .status-delivered {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .order-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      transition: color 0.3s ease;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      color: var(--text-tertiary);
+      font-weight: 600;
+      transition: color 0.3s ease;
+    }
+
+    .order-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+
+    .btn-update {
+      background: #48bb78;
+      color: white;
+    }
+
+    .btn-update:hover {
+      background: #38a169;
+    }
+
+    .btn-delete {
+      background: #f56565;
+      color: white;
+    }
+
+    .btn-delete:hover {
+      background: #e53e3e;
+    }
+
+    .btn-whatsapp {
+      background: #25d366;
+      color: white;
+    }
+
+    .btn-whatsapp:hover {
+      background: #1fb855;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+      stroke: var(--text-secondary);
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #2d3748;
+      color: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 1000;
+      max-width: 400px;
+    }
+
+    .toast.show {
+      display: flex;
+      animation: slideIn 0.3s ease;
+    }
+
+    .toast.success {
+      background: #48bb78;
+    }
+
+    .toast.error {
+      background: #f56565;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .settings-section {
+      background: var(--bg-section);
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      transition: background 0.3s ease;
+    }
+
+    .settings-section h3 {
+      margin: 0 0 16px 0;
+      font-size: 18px;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
+    }
+
+    .export-import {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-secondary {
+      background: #4a5568;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #2d3748;
+    }
+
+    .btn-export {
+      background: #48bb78;
+      color: white;
+    }
+
+    .btn-export:hover {
+      background: #38a169;
+    }
+
+    .btn-clear {
+      background: #f56565;
+      color: white;
+    }
+
+    .btn-clear:hover {
+      background: #e53e3e;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-section);
+      padding: 16px;
+      border-radius: 12px;
+      text-align: center;
+      transition: background 0.3s ease;
+    }
+
+    .stat-number {
+      font-size: 32px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--bg-container);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      transition: background 0.3s ease;
+    }
+
+    .modal-content h3 {
+      margin: 0 0 16px 0;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
+    }
+
+    .modal-content p {
+      margin: 0 0 24px 0;
+      color: var(--text-secondary);
+      transition: color 0.3s ease;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .info-box {
+      background: #ebf8ff;
+      border-left: 4px solid #4299e1;
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #2c5282;
+    }
+
+    [data-theme="dark"] .info-box {
+      background: #2c5282;
+      color: #ebf8ff;
+    }
+
+    .api-status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .api-status.connected {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .api-status.disconnected {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+
+    @media (max-width: 640px) {
+      .logo {
+        position: relative;
+        margin: 0 auto 16px auto;
+        display: block;
+      }
+      
+      .container {
+        padding: 20px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .tabs {
+        overflow-x: auto;
+      }
+
+      .tab {
+        white-space: nowrap;
+      }
+
+      .order-header {
+        flex-direction: column;
+      }
+
+      .theme-toggle {
+        position: relative;
+        margin-bottom: 16px;
+      }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="container">
+   <header class="header"><img src="./logo.png" alt="Company Logo" class="logo" onerror="this.style.display='none';"> <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
+    <h1>Signwale</h1>
+    <p>Track your signage orders in real-time</p>
+   </header>
+   <nav class="tabs"><button class="tab active" data-tab="new-order">New Order</button> <button class="tab" data-tab="orders">All Orders</button> <button class="tab" data-tab="settings">Settings</button>
+   </nav>
+   <main>
+    <div id="new-order" class="tab-content active">
+     <div class="form-section">
+      <form id="order-form">
+       <div class="form-group"><label for="customer-name">Customer Name</label> <input type="text" id="customer-name" required placeholder="Enter customer name">
+       </div>
+       <div class="form-group"><label for="customer-phone">WhatsApp Number</label> <input type="tel" id="customer-phone" required placeholder="+91 9876543210">
+       </div>
+       <div class="form-group"><label for="product-type">Product Type</label> <select id="product-type" required> <option value="">Select product type</option> <option value="LED Signage">LED Signage</option> <option value="Neon Sign">Neon Sign</option> <option value="Acrylic Board">Acrylic Board</option> <option value="Metal Sign">Metal Sign</option> <option value="Flex Banner">Flex Banner</option> <option value="3D Letters">3D Letters</option> <option value="Custom">Custom</option> </select>
+       </div><button type="submit" class="btn btn-primary" id="submit-btn"> Create Order &amp; Send Confirmation </button>
+      </form>
+     </div>
+    </div>
+    <div id="orders" class="tab-content">
+     <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+       <div class="stat-number" id="total-orders">
+        0
+       </div>
+       <div class="stat-label">
+        Total Orders
+       </div>
+      </div>
+      <div class="stat-card">
+       <div class="stat-number" id="active-orders">
+        0
+       </div>
+       <div class="stat-label">
+        Active Orders
+       </div>
+      </div>
+      <div class="stat-card">
+       <div class="stat-number" id="delivered-orders">
+        0
+       </div>
+       <div class="stat-label">
+        Delivered
+       </div>
+      </div>
+     </div>
+     <div class="orders-list" id="orders-list">
+      <div class="empty-state">
+       <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+       </svg>
+       <p>No orders yet. Create your first order!</p>
+      </div>
+     </div>
+    </div>
+    <div id="settings" class="tab-content">
+     <div class="settings-section">
+      <h3>Company Settings</h3>
+      <div class="form-group"><label for="company-name-setting">Company Name</label> <input type="text" id="company-name-setting" placeholder="Signwale">
+      </div><button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+     </div>
+     <div class="settings-section">
+      <h3>WhatsApp API Configuration <span class="api-status" id="api-status">disconnected</span></h3>
+      <div class="info-box">
+       💡 <strong>Manual Mode (FREE):</strong> Opens WhatsApp with pre-filled message. <strong>API Mode:</strong> Sends messages automatically from your business number.
+      </div>
+      <div class="info-box" style="background: #fef5e7; border-left-color: #f39c12; color: #7d6608; margin-top: 8px;">
+       ⚠️ <strong>Local Testing Note:</strong> API calls may be blocked by browsers when running locally (file:// or localhost). For full API functionality, use "Publish to website" in Canva or deploy to a web server. Manual WhatsApp mode works everywhere!
+      </div>
+      <div class="form-group"><label for="api-provider">API Provider</label> <select id="api-provider" onchange="toggleApiFields()"> <option value="manual">Manual (wa.me links) - FREE</option> <option value="periskope">Periskope (Recommended - Simple Setup)</option> <option value="twilio">Twilio WhatsApp API</option> <option value="gupshup">Gupshup WhatsApp API</option> <option value="messagebird">MessageBird WhatsApp API</option> <option value="custom">Custom API Endpoint</option> </select>
+      </div>
+      <div id="api-config-fields" style="display: none;">
+       <div class="form-group" id="api-key-field"><label for="api-key" id="api-key-label">API Key / Account SID</label> <input type="password" id="api-key" placeholder="Enter your API key">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="api-key-help">Get your API key from the provider's dashboard</p>
+       </div>
+       <div class="form-group" id="api-secret-field"><label for="api-secret">API Secret / Auth Token</label> <input type="password" id="api-secret" placeholder="Enter your API secret">
+       </div>
+       <div class="form-group" id="api-phone-field"><label for="api-phone">WhatsApp Business Number</label> <input type="tel" id="api-phone" placeholder="+919876543210">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">This is your dedicated WhatsApp Business API number (not your personal number)</p>
+       </div>
+       <div class="form-group" id="endpoint-field" style="display: none;"><label for="api-endpoint">API Endpoint URL</label> <input type="url" id="api-endpoint" placeholder="https://api.example.com/send">
+       </div>
+      </div>
+      <div class="form-group"><label style="display: flex; align-items: center; gap: 8px; cursor: pointer;"> <input type="checkbox" id="auto-send-enabled" style="width: auto;" onchange="toggleAutoSend()"> <span>Enable Automatic Message Sending (API only)</span> </label>
+       <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">When enabled, messages will be sent automatically via API. When disabled, WhatsApp will open with pre-filled message.</p>
+      </div><button class="btn btn-primary" onclick="saveSettings()">Save API Settings</button> <button class="btn btn-secondary btn-small" onclick="testApiConnection()" style="margin-top: 8px;">Test API Connection</button>
+     </div>
+     <div class="settings-section">
+      <h3>Status Messages</h3>
+      <div class="form-group"><label for="msg-confirmed">Order Confirmed Message</label> <input type="text" id="msg-confirmed" placeholder="Your order has been confirmed!">
+      </div>
+      <div class="form-group"><label for="msg-manufacturing">Manufacturing Message</label> <input type="text" id="msg-manufacturing" placeholder="Your signage is being manufactured with care.">
+      </div>
+      <div class="form-group"><label for="msg-ready">Ready to Ship Message</label> <input type="text" id="msg-ready" placeholder="Your order is ready and will be shipped soon!">
+      </div>
+      <div class="form-group"><label for="msg-shipped">Out for Delivery Message</label> <input type="text" id="msg-shipped" placeholder="Your order is out for delivery!">
+      </div>
+      <div class="form-group"><label for="msg-delivered">Delivered Message</label> <input type="text" id="msg-delivered" placeholder="Your order has been delivered. Thank you!">
+      </div><button class="btn btn-primary" onclick="saveSettings()">Save Messages</button>
+     </div>
+     <div class="settings-section">
+      <h3>Data Management</h3>
+      <div class="export-import"><button class="btn btn-export btn-small" onclick="exportData()">Export Orders (JSON)</button> <button class="btn btn-secondary btn-small" onclick="document.getElementById('import-file').click()">Import Orders</button> <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)"> <button class="btn btn-clear btn-small" onclick="showClearConfirmation()">Clear All Orders</button>
+      </div>
+     </div>
+    </div>
+   </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="modal" id="clear-modal">
+   <div class="modal-content">
+    <h3>Clear All Orders?</h3>
+    <p>This will permanently delete all orders. This action cannot be undone.</p>
+    <div class="modal-actions"><button class="btn btn-secondary btn-small" onclick="hideClearConfirmation()">Cancel</button> <button class="btn btn-clear btn-small" onclick="clearAllOrders()">Delete All</button>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Default settings
+    const defaultSettings = {
+      companyName: "Signwale",
+      theme: "light",
+      messages: {
+        confirmed: "Your order has been confirmed! We'll start working on it soon.",
+        manufacturing: "Your signage is being manufactured with care.",
+        ready: "Your order is ready and will be shipped soon!",
+        shipped: "Your order is out for delivery!",
+        delivered: "Your order has been delivered. Thank you for choosing us!"
+      },
+      api: {
+        provider: "manual",
+        apiKey: "",
+        apiSecret: "",
+        apiPhone: "",
+        apiEndpoint: "",
+        autoSendEnabled: false
+      }
+    };
+
+    // Status flow
+    const statusFlow = ['confirmed', 'manufacturing', 'ready', 'shipped', 'delivered'];
+
+    // Load settings from localStorage
+    function loadSettings() {
+      const saved = localStorage.getItem('signwale_settings');
+      return saved ? JSON.parse(saved) : defaultSettings;
+    }
+
+    // Save settings to localStorage
+    function saveSettingsToStorage(settings) {
+      localStorage.setItem('signwale_settings', JSON.stringify(settings));
+    }
+
+    // Load orders from localStorage
+    function loadOrders() {
+      const saved = localStorage.getItem('signwale_orders');
+      return saved ? JSON.parse(saved) : [];
+    }
+
+    // Save orders to localStorage
+    function saveOrders(orders) {
+      localStorage.setItem('signwale_orders', JSON.stringify(orders));
+    }
+
+    // Initialize settings
+    let settings = loadSettings();
+    let orders = loadOrders();
+
+    // Theme management
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      settings.theme = newTheme;
+      saveSettingsToStorage(settings);
+      
+      updateThemeIcon(newTheme);
+    }
+
+    function updateThemeIcon(theme) {
+      const themeToggle = document.querySelector('.theme-toggle');
+      if (theme === 'dark') {
+        themeToggle.textContent = '☀️';
+      } else {
+        themeToggle.textContent = '🌙';
+      }
+    }
+
+    function initTheme() {
+      const theme = settings.theme || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      updateThemeIcon(theme);
+    }
+
+    // Toggle API configuration fields
+    function toggleApiFields() {
+      const provider = document.getElementById('api-provider').value;
+      const apiFields = document.getElementById('api-config-fields');
+      const endpointField = document.getElementById('endpoint-field');
+      const apiSecretField = document.getElementById('api-secret-field');
+      const apiPhoneField = document.getElementById('api-phone-field');
+      const autoSendCheckbox = document.getElementById('auto-send-enabled');
+      const apiKeyLabel = document.getElementById('api-key-label');
+      const apiKeyHelp = document.getElementById('api-key-help');
+      
+      if (provider === 'manual') {
+        apiFields.style.display = 'none';
+        autoSendCheckbox.disabled = true;
+        autoSendCheckbox.checked = false;
+      } else {
+        apiFields.style.display = 'block';
+        autoSendCheckbox.disabled = false;
+        
+        // Periskope - Only needs API key
+        if (provider === 'periskope') {
+          apiKeyLabel.textContent = 'Periskope API Key';
+          apiKeyHelp.innerHTML = '🔑 Get your API key from <a href="https://console.periskope.app/" target="_blank" rel="noopener noreferrer" style="color: #667eea;">console.periskope.app</a>';
+          apiSecretField.style.display = 'none';
+          apiPhoneField.style.display = 'none';
+          endpointField.style.display = 'none';
+        } 
+        // Other providers
+        else {
+          apiKeyLabel.textContent = 'API Key / Account SID';
+          apiKeyHelp.textContent = 'Get your API key from the provider\'s dashboard';
+          apiSecretField.style.display = 'block';
+          apiPhoneField.style.display = 'block';
+          
+          if (provider === 'custom') {
+            endpointField.style.display = 'block';
+          } else {
+            endpointField.style.display = 'none';
+          }
+        }
+      }
+      
+      updateApiStatus();
+    }
+
+    // Toggle auto-send
+    function toggleAutoSend() {
+      const provider = document.getElementById('api-provider').value;
+      const autoSend = document.getElementById('auto-send-enabled').checked;
+      
+      if (provider === 'manual' && autoSend) {
+        document.getElementById('auto-send-enabled').checked = false;
+        showToast('Please configure an API provider first', 'error');
+      }
+    }
+
+    // Update API status indicator
+    function updateApiStatus() {
+      const statusEl = document.getElementById('api-status');
+      const provider = settings.api.provider;
+      
+      // Periskope only needs API key
+      if (provider === 'periskope' && settings.api.apiKey) {
+        statusEl.textContent = 'configured';
+        statusEl.className = 'api-status connected';
+      }
+      // Other providers need API key and phone
+      else if (provider !== 'manual' && provider !== 'periskope' && settings.api.apiKey && settings.api.apiPhone) {
+        statusEl.textContent = 'configured';
+        statusEl.className = 'api-status connected';
+      } else {
+        statusEl.textContent = provider === 'manual' ? 'manual mode' : 'not configured';
+        statusEl.className = 'api-status disconnected';
+      }
+    }
+
+    // Update UI with settings
+    function updateSettingsUI() {
+      document.querySelector('.header h1').textContent = settings.companyName;
+      document.getElementById('company-name-setting').value = settings.companyName;
+      document.getElementById('msg-confirmed').value = settings.messages.confirmed;
+      document.getElementById('msg-manufacturing').value = settings.messages.manufacturing;
+      document.getElementById('msg-ready').value = settings.messages.ready;
+      document.getElementById('msg-shipped').value = settings.messages.shipped;
+      document.getElementById('msg-delivered').value = settings.messages.delivered;
+      
+      // API settings
+      document.getElementById('api-provider').value = settings.api.provider;
+      document.getElementById('api-key').value = settings.api.apiKey || '';
+      document.getElementById('api-secret').value = settings.api.apiSecret || '';
+      document.getElementById('api-phone').value = settings.api.apiPhone || '';
+      document.getElementById('api-endpoint').value = settings.api.apiEndpoint || '';
+      document.getElementById('auto-send-enabled').checked = settings.api.autoSendEnabled || false;
+      
+      toggleApiFields();
+      updateApiStatus();
+    }
+
+    // Save settings from form
+    function saveSettings() {
+      settings.companyName = document.getElementById('company-name-setting').value || defaultSettings.companyName;
+      settings.messages.confirmed = document.getElementById('msg-confirmed').value || defaultSettings.messages.confirmed;
+      settings.messages.manufacturing = document.getElementById('msg-manufacturing').value || defaultSettings.messages.manufacturing;
+      settings.messages.ready = document.getElementById('msg-ready').value || defaultSettings.messages.ready;
+      settings.messages.shipped = document.getElementById('msg-shipped').value || defaultSettings.messages.shipped;
+      settings.messages.delivered = document.getElementById('msg-delivered').value || defaultSettings.messages.delivered;
+      
+      // API settings
+      settings.api.provider = document.getElementById('api-provider').value;
+      settings.api.apiKey = document.getElementById('api-key').value;
+      settings.api.apiSecret = document.getElementById('api-secret').value;
+      settings.api.apiPhone = document.getElementById('api-phone').value;
+      settings.api.apiEndpoint = document.getElementById('api-endpoint').value;
+      settings.api.autoSendEnabled = document.getElementById('auto-send-enabled').checked;
+      
+      saveSettingsToStorage(settings);
+      updateSettingsUI();
+      showToast('Settings saved successfully!', 'success');
+    }
+
+    // Test API connection
+    async function testApiConnection() {
+      const provider = settings.api.provider;
+      
+      if (provider === 'manual') {
+        showToast('Manual mode selected - no API to test', 'error');
+        return;
+      }
+      
+      // Periskope only needs API key
+      if (provider === 'periskope') {
+        if (!settings.api.apiKey) {
+          showToast('Please enter your Periskope API key first', 'error');
+          return;
+        }
+      } 
+      // Other providers need API key and phone
+      else {
+        if (!settings.api.apiKey || !settings.api.apiPhone) {
+          showToast('Please configure API credentials first', 'error');
+          return;
+        }
+      }
+      
+      showToast('Testing API connection...', 'success');
+      
+      // For Periskope, test with actual API call
+      if (provider === 'periskope') {
+        try {
+          const response = await fetch('https://api.periskope.app/v1/account/verify', {
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer ' + settings.api.apiKey,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            showToast('✅ Periskope API connected successfully!', 'success');
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            showToast('❌ API Error: ' + (errorData.message || 'Invalid API key'), 'error');
+          }
+        } catch (error) {
+          showToast('⚠️ CORS/Network Error: API calls work from deployed sites. For local testing, messages will open WhatsApp manually.', 'error');
+          console.log('API Test Error:', error.message);
+        }
+      } else {
+        // Simulate API test for other providers
+        setTimeout(() => {
+          showToast('⚠️ API Test: This is a demo. Configure your actual API credentials to send real messages.', 'error');
+        }, 1500);
+      }
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast show ' + type;
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 4000);
+    }
+
+    // Format date
+    function formatDate(isoString) {
+      const date = new Date(isoString);
+      return date.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    // Generate order ID
+    function generateOrderId() {
+      return 'SW' + Date.now().toString().slice(-8);
+    }
+
+    // Get WhatsApp message
+    function getWhatsAppMessage(order) {
+      const message = settings.messages[order.status];
+      return `Hello ${order.customer_name}! 🎉\n\n${settings.companyName} - Order Update\n\nOrder ID: ${order.order_id}\nProduct: ${order.product_type}\nStatus: ${order.status.toUpperCase()}\n\n${message}\n\nThank you for choosing ${settings.companyName}!`;
+    }
+
+    // Send WhatsApp message via API
+    async function sendWhatsAppViaAPI(order) {
+      const provider = settings.api.provider;
+      const message = getWhatsAppMessage(order);
+      const toPhone = order.customer_phone.replace(/[^0-9]/g, '');
+      const fromPhone = settings.api.apiPhone ? settings.api.apiPhone.replace(/[^0-9]/g, '') : '';
+      
+      try {
+        let response;
+        
+        switch (provider) {
+          case 'periskope':
+            // Periskope API call - Simple and straightforward
+            response = await fetch('https://api.periskope.app/v1/messages/send', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + settings.api.apiKey,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                to: toPhone,
+                message: message
+              })
+            });
+            
+            if (response.ok) {
+              showToast('✅ Message sent via Periskope!', 'success');
+              return true;
+            } else {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.message || 'API request failed');
+            }
+            break;
+            
+          case 'twilio':
+            // Twilio API call
+            response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${settings.api.apiKey}/Messages.json`, {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Basic ' + btoa(settings.api.apiKey + ':' + settings.api.apiSecret),
+                'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              body: new URLSearchParams({
+                'From': 'whatsapp:+' + fromPhone,
+                'To': 'whatsapp:+' + toPhone,
+                'Body': message
+              })
+            });
+            break;
+            
+          case 'gupshup':
+            // Gupshup API call
+            response = await fetch('https://api.gupshup.io/sm/api/v1/msg', {
+              method: 'POST',
+              headers: {
+                'apikey': settings.api.apiKey,
+                'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              body: new URLSearchParams({
+                'channel': 'whatsapp',
+                'source': fromPhone,
+                'destination': toPhone,
+                'message': JSON.stringify({ type: 'text', text: message }),
+                'src.name': settings.companyName
+              })
+            });
+            break;
+            
+          case 'messagebird':
+            // MessageBird API call
+            response = await fetch('https://conversations.messagebird.com/v1/send', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'AccessKey ' + settings.api.apiKey,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                to: toPhone,
+                from: fromPhone,
+                type: 'text',
+                content: { text: message }
+              })
+            });
+            break;
+            
+          case 'custom':
+            // Custom API endpoint
+            response = await fetch(settings.api.apiEndpoint, {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + settings.api.apiKey,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                to: toPhone,
+                from: fromPhone,
+                message: message,
+                apiSecret: settings.api.apiSecret
+              })
+            });
+            break;
+        }
+        
+        if (response && response.ok) {
+          showToast('Message sent successfully via ' + provider + '!', 'success');
+          return true;
+        } else {
+          throw new Error('API request failed');
+        }
+        
+      } catch (error) {
+        console.error('WhatsApp API Error:', error);
+        
+        // Check if it's a CORS/network error (common on localhost)
+        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+          showToast('⚠️ Local Testing: API blocked by browser. Opening WhatsApp manually...', 'error');
+        } else {
+          showToast('⚠️ API Error: ' + error.message + '. Opening WhatsApp manually...', 'error');
+        }
+        return false;
+      }
+    }
+
+    // Open WhatsApp (manual or API)
+    async function openWhatsApp(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      // Check if API mode is enabled and configured
+      if (settings.api.autoSendEnabled && settings.api.provider !== 'manual') {
+        const sent = await sendWhatsAppViaAPI(order);
+        if (sent) return; // Message sent via API, no need to open WhatsApp
+      }
+      
+      // Fallback to manual mode (wa.me link)
+      const phone = order.customer_phone.replace(/[^0-9]/g, '');
+      const message = encodeURIComponent(getWhatsAppMessage(order));
+      const url = `https://wa.me/${phone}?text=${message}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      showToast('Opening WhatsApp...', 'success');
+    }
+
+    // Update statistics
+    function updateStats() {
+      const total = orders.length;
+      const active = orders.filter(o => o.status !== 'delivered').length;
+      const delivered = orders.filter(o => o.status === 'delivered').length;
+
+      document.getElementById('total-orders').textContent = total;
+      document.getElementById('active-orders').textContent = active;
+      document.getElementById('delivered-orders').textContent = delivered;
+    }
+
+    // Render orders
+    function renderOrders() {
+      const ordersList = document.getElementById('orders-list');
+      
+      if (orders.length === 0) {
+        ordersList.innerHTML = `
+          <div class="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p>No orders yet. Create your first order!</p>
+          </div>
+        `;
+        updateStats();
+        return;
+      }
+
+      const sortedOrders = [...orders].sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+      );
+
+      ordersList.innerHTML = sortedOrders.map(order => `
+        <div class="order-card">
+          <div class="order-header">
+            <div class="order-info">
+              <h3>${order.customer_name}</h3>
+              <p>Order #${order.order_id}</p>
+            </div>
+            <span class="status-badge status-${order.status}">${order.status}</span>
+          </div>
+          
+          <div class="order-details">
+            <div class="detail-item">
+              <span class="detail-label">Product</span>
+              <span class="detail-value">${order.product_type}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Phone</span>
+              <span class="detail-value">${order.customer_phone}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Created</span>
+              <span class="detail-value">${formatDate(order.created_at)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Last Updated</span>
+              <span class="detail-value">${formatDate(order.last_updated)}</span>
+            </div>
+          </div>
+          
+          <div class="order-actions">
+            ${order.status !== 'delivered' ? `
+              <button class="btn btn-update btn-small" onclick="updateOrderStatus('${order.id}')">
+                Update Status
+              </button>
+            ` : ''}
+            <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${order.id}')">
+              ${settings.api.autoSendEnabled && settings.api.provider !== 'manual' ? 'Send Message' : 'Send WhatsApp'}
+            </button>
+            <button class="btn btn-delete btn-small" onclick="deleteOrder('${order.id}')">
+              Delete
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      updateStats();
+    }
+
+    // Update order status
+    function updateOrderStatus(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      const currentIndex = statusFlow.indexOf(order.status);
+      if (currentIndex === statusFlow.length - 1) {
+        showToast('Order already delivered!', 'error');
+        return;
+      }
+
+      const nextStatus = statusFlow[currentIndex + 1];
+      order.status = nextStatus;
+      order.last_updated = new Date().toISOString();
+
+      saveOrders(orders);
+      renderOrders();
+      showToast(`Status updated to ${nextStatus}!`, 'success');
+      
+      setTimeout(() => openWhatsApp(orderId), 500);
+    }
+
+    // Delete order
+    function deleteOrder(orderId) {
+      orders = orders.filter(o => o.id !== orderId);
+      saveOrders(orders);
+      renderOrders();
+      showToast('Order deleted successfully!', 'success');
+    }
+
+    // Export data
+    function exportData() {
+      const dataStr = JSON.stringify({ orders, settings }, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `signwale_orders_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast('Orders exported successfully!', 'success');
+    }
+
+    // Import data
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.orders) {
+            orders = data.orders;
+            saveOrders(orders);
+            renderOrders();
+          }
+          if (data.settings) {
+            settings = data.settings;
+            saveSettingsToStorage(settings);
+            updateSettingsUI();
+            initTheme();
+          }
+          showToast('Data imported successfully!', 'success');
+        } catch (error) {
+          showToast('Error importing data. Please check the file format.', 'error');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    // Show clear confirmation
+    function showClearConfirmation() {
+      document.getElementById('clear-modal').classList.add('show');
+    }
+
+    // Hide clear confirmation
+    function hideClearConfirmation() {
+      document.getElementById('clear-modal').classList.remove('show');
+    }
+
+    // Clear all orders
+    function clearAllOrders() {
+      orders = [];
+      saveOrders(orders);
+      renderOrders();
+      hideClearConfirmation();
+      showToast('All orders cleared!', 'success');
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        tab.classList.add('active');
+        document.getElementById(tabName).classList.add('active');
+      });
+    });
+
+    // Form submission
+    document.getElementById('order-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const orderData = {
+        id: Date.now().toString(),
+        order_id: generateOrderId(),
+        customer_name: document.getElementById('customer-name').value,
+        customer_phone: document.getElementById('customer-phone').value,
+        product_type: document.getElementById('product-type').value,
+        status: 'confirmed',
+        created_at: new Date().toISOString(),
+        last_updated: new Date().toISOString()
+      };
+
+      orders.push(orderData);
+      saveOrders(orders);
+      
+      showToast('Order created successfully!', 'success');
+      document.getElementById('order-form').reset();
+      
+      // Switch to orders tab
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('[data-tab="orders"]').classList.add('active');
+      document.getElementById('orders').classList.add('active');
+      
+      renderOrders();
+      
+      setTimeout(() => openWhatsApp(orderData.id), 500);
+    });
+
+    // Initialize
+    initTheme();
+    updateSettingsUI();
+    renderOrders();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99ce573425c17fa8',t:'MTc2Mjg2OTg4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
