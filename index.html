@@ -757,698 +757,778 @@
    </div>
   </div>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
-import { getFirestore, collection, doc, onSnapshot, setDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  onSnapshot,
+  setDoc,
+  getDocs,
+  writeBatch
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
- const firebaseConfig = {
-    apiKey: "AIzaSyDrh-L6R8e-OuUirs0hQmfTbN1v1ShccMg",
-    authDomain: "signwale-c81bf.firebaseapp.com",
-    projectId: "signwale-c81bf",
-    storageBucket: "signwale-c81bf.firebasestorage.app",
-    messagingSenderId: "848802151725",
-    appId: "1:848802151725:web:3e33c46f128ab72c5667a4",
-    measurementId: "G-5CMSJ0DWJY"
-  };
-
+const firebaseConfig = {
+  apiKey: "AIzaSyDrh-L6R8e-OuUirs0hQmfTbN1v1ShccMg",
+  authDomain: "signwale-c81bf.firebaseapp.com",
+  projectId: "signwale-c81bf",
+  storageBucket: "signwale-c81bf.firebasestorage.app",
+  messagingSenderId: "848802151725",
+  appId: "1:848802151725:web:3e33c46f128ab72c5667a4",
+  measurementId: "G-5CMSJ0DWJY"
+};
 
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// analytics may throw in environments without window.navigator; guard it
+try { getAnalytics(app); } catch (e) { /* ignore analytics errors */ }
 const db = getFirestore(app);
 
-
+// Firestore refs
 const settingsDoc = doc(db, "settings", "current");
 const ordersCollection = collection(db, "orders");
 
+// Default settings
+const defaultSettings = {
+  companyName: "Signwale",
+  theme: "light",
+  messages: {
+    confirmed: "Your order has been confirmed! We'll start working on it soon.",
+    manufacturing: "Your signage is being manufactured with care.",
+    ready: "Your order is ready and will be shipped soon!",
+    shipped: "Your order is out for delivery!",
+    delivered: "Your order has been delivered. Thank you for choosing us!"
+  },
+  api: {
+    provider: "manual",
+    apiKey: "",
+    apiSecret: "",
+    apiPhone: "",
+    apiEndpoint: "",
+    autoSendEnabled: false
+  }
+};
+
+// Status flow
+const statusFlow = ['confirmed', 'manufacturing', 'ready', 'shipped', 'delivered'];
+
+// App state
+let settings = { ...defaultSettings };
+let orders = [];
+
+// --- Firestore helpers ---
 function subscribeToSettings(callback) {
   onSnapshot(settingsDoc, (docSnap) => {
-    callback(docSnap.data() || {});
+    const data = docSnap.exists() ? docSnap.data() : null;
+    callback(data || {});
+  }, (err) => {
+    console.error('Settings snapshot error:', err);
+    // If snapshot fails (e.g. no permissions), just use local/default settings
+    callback(settings);
   });
 }
 
-async function saveSettings(settings) {
-  await setDoc(settingsDoc, settings);
+async function saveSettings(settingsObj) {
+  try {
+    await setDoc(settingsDoc, settingsObj, { merge: true });
+  } catch (err) {
+    console.error('Failed to save settings to Firestore:', err);
+  }
 }
 
 function subscribeToOrders(callback) {
   onSnapshot(ordersCollection, (snapshot) => {
-    const orders = [];
-    snapshot.forEach((doc) => orders.push({ id: doc.id, ...doc.data() }));
+    const arr = [];
+    snapshot.forEach((d) => arr.push({ id: d.id, ...d.data() }));
+    callback(arr);
+  }, (err) => {
+    console.error('Orders snapshot error:', err);
     callback(orders);
   });
 }
 
-async function saveOrders(orders) {
-  const batch = writeBatch(db);
-  const snapshot = await getDocs(ordersCollection);
-  snapshot.forEach((doc) => batch.delete(doc.ref));
-  orders.forEach((order) => {
-    const docRef = order.id ? doc(db, "orders", order.id) : doc(ordersCollection);
-    batch.set(docRef, order);
-  });
-  await batch.commit();
-}
+async function saveOrdersToFirestore(localOrders) {
+  // Rewrites the orders collection to match localOrders (existing approach)
+  try {
+    const batch = writeBatch(db);
+    const snapshot = await getDocs(ordersCollection);
+    snapshot.forEach((d) => batch.delete(d.ref));
 
-subscribeToSettings((settings) => {
-  console.log("Settings Updated:", settings);
-  // Update UI accordingly
-});
-
-subscribeToOrders((orders) => {
-  console.log("Orders Updated:", orders);
-  // Update UI accordingly
-});
-
-
-
-
-
-    // Default settings
-    const defaultSettings = {
-      companyName: "Signwale",
-      theme: "light",
-      messages: {
-        confirmed: "Your order has been confirmed! We'll start working on it soon.",
-        manufacturing: "Your signage is being manufactured with care.",
-        ready: "Your order is ready and will be shipped soon!",
-        shipped: "Your order is out for delivery!",
-        delivered: "Your order has been delivered. Thank you for choosing us!"
-      },
-      api: {
-        provider: "manual",
-        apiKey: "",
-        apiSecret: "",
-        apiPhone: "",
-        apiEndpoint: "",
-        autoSendEnabled: false
-      }
-    };
-
-    // Status flow
-    const statusFlow = ['confirmed', 'manufacturing', 'ready', 'shipped', 'delivered'];
-    
-
-
-
-    // Theme management
-    function toggleTheme() {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      
-      document.documentElement.setAttribute('data-theme', newTheme);
-      settings.theme = newTheme;
-      saveSettingsToStorage(settings);
-      
-      updateThemeIcon(newTheme);
-    }
-
-    function updateThemeIcon(theme) {
-      const themeToggle = document.querySelector('.theme-toggle');
-      if (theme === 'dark') {
-        themeToggle.textContent = '☀️';
-      } else {
-        themeToggle.textContent = '🌙';
-      }
-    }
-
-    function initTheme() {
-      const theme = settings.theme || 'light';
-      document.documentElement.setAttribute('data-theme', theme);
-      updateThemeIcon(theme);
-    }
-
-    // Toggle API configuration fields
-    function toggleApiFields() {
-      const provider = document.getElementById('api-provider').value;
-      const apiFields = document.getElementById('api-config-fields');
-      const endpointField = document.getElementById('endpoint-field');
-      const apiSecretField = document.getElementById('api-secret-field');
-      const apiPhoneField = document.getElementById('api-phone-field');
-      const autoSendCheckbox = document.getElementById('auto-send-enabled');
-      const apiKeyLabel = document.getElementById('api-key-label');
-      const apiKeyHelp = document.getElementById('api-key-help');
-      
-      if (provider === 'manual') {
-        apiFields.style.display = 'none';
-        autoSendCheckbox.disabled = true;
-        autoSendCheckbox.checked = false;
-      } else {
-        apiFields.style.display = 'block';
-        autoSendCheckbox.disabled = false;
-        
-        // Periskope - Only needs API key
-        if (provider === 'periskope') {
-          apiKeyLabel.textContent = 'Periskope API Key';
-          apiKeyHelp.innerHTML = '🔑 Get your API key from <a href="https://console.periskope.app/" target="_blank" rel="noopener noreferrer" style="color: #667eea;">console.periskope.app</a>';
-          apiSecretField.style.display = 'none';
-          apiPhoneField.style.display = 'none';
-          endpointField.style.display = 'none';
-        } 
-        // Other providers
-        else {
-          apiKeyLabel.textContent = 'API Key / Account SID';
-          apiKeyHelp.textContent = 'Get your API key from the provider\'s dashboard';
-          apiSecretField.style.display = 'block';
-          apiPhoneField.style.display = 'block';
-          
-          if (provider === 'custom') {
-            endpointField.style.display = 'block';
-          } else {
-            endpointField.style.display = 'none';
-          }
-        }
-      }
-      
-      updateApiStatus();
-    }
-
-    // Toggle auto-send
-    function toggleAutoSend() {
-      const provider = document.getElementById('api-provider').value;
-      const autoSend = document.getElementById('auto-send-enabled').checked;
-      
-      if (provider === 'manual' && autoSend) {
-        document.getElementById('auto-send-enabled').checked = false;
-        showToast('Please configure an API provider first', 'error');
-      }
-    }
-
-    // Update API status indicator
-    function updateApiStatus() {
-      const statusEl = document.getElementById('api-status');
-      const provider = settings.api.provider;
-      
-      // Periskope only needs API key
-      if (provider === 'periskope' && settings.api.apiKey) {
-        statusEl.textContent = 'configured';
-        statusEl.className = 'api-status connected';
-      }
-      // Other providers need API key and phone
-      else if (provider !== 'manual' && provider !== 'periskope' && settings.api.apiKey && settings.api.apiPhone) {
-        statusEl.textContent = 'configured';
-        statusEl.className = 'api-status connected';
-      } else {
-        statusEl.textContent = provider === 'manual' ? 'manual mode' : 'not configured';
-        statusEl.className = 'api-status disconnected';
-      }
-    }
-
-    // Update UI with settings
-    function updateSettingsUI() {
-      document.querySelector('.header h1').textContent = settings.companyName;
-      document.getElementById('company-name-setting').value = settings.companyName;
-      document.getElementById('msg-confirmed').value = settings.messages.confirmed;
-      document.getElementById('msg-manufacturing').value = settings.messages.manufacturing;
-      document.getElementById('msg-ready').value = settings.messages.ready;
-      document.getElementById('msg-shipped').value = settings.messages.shipped;
-      document.getElementById('msg-delivered').value = settings.messages.delivered;
-      
-      // API settings
-      document.getElementById('api-provider').value = settings.api.provider;
-      document.getElementById('api-key').value = settings.api.apiKey || '';
-      document.getElementById('api-secret').value = settings.api.apiSecret || '';
-      document.getElementById('api-phone').value = settings.api.apiPhone || '';
-      document.getElementById('api-endpoint').value = settings.api.apiEndpoint || '';
-      document.getElementById('auto-send-enabled').checked = settings.api.autoSendEnabled || false;
-      
-      toggleApiFields();
-      updateApiStatus();
-    }
-
-    // Save settings from form
-    function saveSettings() {
-      settings.companyName = document.getElementById('company-name-setting').value || defaultSettings.companyName;
-      settings.messages.confirmed = document.getElementById('msg-confirmed').value || defaultSettings.messages.confirmed;
-      settings.messages.manufacturing = document.getElementById('msg-manufacturing').value || defaultSettings.messages.manufacturing;
-      settings.messages.ready = document.getElementById('msg-ready').value || defaultSettings.messages.ready;
-      settings.messages.shipped = document.getElementById('msg-shipped').value || defaultSettings.messages.shipped;
-      settings.messages.delivered = document.getElementById('msg-delivered').value || defaultSettings.messages.delivered;
-      
-      // API settings
-      settings.api.provider = document.getElementById('api-provider').value;
-      settings.api.apiKey = document.getElementById('api-key').value;
-      settings.api.apiSecret = document.getElementById('api-secret').value;
-      settings.api.apiPhone = document.getElementById('api-phone').value;
-      settings.api.apiEndpoint = document.getElementById('api-endpoint').value;
-      settings.api.autoSendEnabled = document.getElementById('auto-send-enabled').checked;
-      
-      saveSettingsToStorage(settings);
-      updateSettingsUI();
-      showToast('Settings saved successfully!', 'success');
-    }
-
-    // Test API connection
-    async function testApiConnection() {
-      const provider = settings.api.provider;
-      
-      if (provider === 'manual') {
-        showToast('Manual mode selected - no API to test', 'error');
-        return;
-      }
-      
-      // Periskope only needs API key
-      if (provider === 'periskope') {
-        if (!settings.api.apiKey) {
-          showToast('Please enter your Periskope API key first', 'error');
-          return;
-        }
-      } 
-      // Other providers need API key and phone
-      else {
-        if (!settings.api.apiKey || !settings.api.apiPhone) {
-          showToast('Please configure API credentials first', 'error');
-          return;
-        }
-      }
-      
-      showToast('Testing API connection...', 'success');
-      
-      // For Periskope, test with actual API call
-      if (provider === 'periskope') {
-        try {
-          const response = await fetch('https://api.periskope.app/v1/account/verify', {
-            method: 'GET',
-            headers: {
-              'Authorization': "Bearer " + settings.api.apiKey,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (response.ok) {
-            showToast('✅ Periskope API connected successfully!', 'success');
-          } else {
-            const errorData = await response.json().catch(() => ({}));
-            showToast('❌ API Error: ' + (errorData.message || 'Invalid API key'), 'error');
-          }
-        } catch (error) {
-          showToast('⚠️ CORS/Network Error: API calls work from deployed sites. For local testing, messages will open WhatsApp manually.', 'error');
-          console.log('API Test Error:', error.message);
-        }
-      } else {
-        // Simulate API test for other providers
-        setTimeout(() => {
-          showToast('⚠️ API Test: This is a demo. Configure your actual API credentials to send real messages.', 'error');
-        }, 1500);
-      }
-    }
-
-    // Show toast notification
-    function showToast(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.className = 'toast show ' + type;
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 4000);
-    }
-
-    // Format date
-    function formatDate(isoString) {
-      const date = new Date(isoString);
-      return date.toLocaleString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-
-    // Generate order ID
-    function generateOrderId() {
-      return 'SW' + Date.now().toString().slice(-8);
-    }
-
-    // Get WhatsApp message
-    function getWhatsAppMessage(order) {
-      const message = settings.messages[order.status];
-      return `Hello ${order.customer_name}! 🎉\n\n${settings.companyName} - Order Update\n\nOrder ID: ${order.order_id}\nProduct: ${order.product_type}\nStatus: ${order.status.toUpperCase()}\n\n${message}\n\nThank you for choosing ${settings.companyName}!`;
-    }
-
-    // Send WhatsApp message via API
-    async function sendWhatsAppViaAPI(order) {
-      const provider = settings.api.provider;
-      const message = getWhatsAppMessage(order);
-      const toPhone = order.customer_phone.replace(/[^0-9]/g, '');
-      const fromPhone = settings.api.apiPhone ? settings.api.apiPhone.replace(/[^0-9]/g, '') : '';
-      
-      try {
-        let response;
-        
-        switch (provider) {
-          case 'periskope':
-            // Periskope API call - Simple and straightforward
-            response = await fetch('https://api.periskope.app/v1/message/send', {
-              method: 'POST',
-              headers: {
-                'Authorization': "Bearer " + settings.api.apiKey,
-                'Content-Type': 'application/json',
-                'x-phone': '919606931023' 
-              },
-              body: JSON.stringify({
-                chat_id: `${toPhone}@whatsapp`,
-                message: message
-              })
-            });
-            
-            if (response.ok) {
-              showToast('✅ Message sent via Periskope!', 'success');
-              return true;
-            } else {
-              const errorData = await response.json().catch(() => ({}));
-              throw new Error(errorData.message || 'API request failed');
-            }
-            break;
-            
-          case 'twilio':
-            // Twilio API call
-            response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${settings.api.apiKey}/Messages.json`, {
-              method: 'POST',
-              headers: {
-                'Authorization': 'Basic ' + btoa(settings.api.apiKey + ':' + settings.api.apiSecret),
-                'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: new URLSearchParams({
-                'From': 'whatsapp:+' + fromPhone,
-                'To': 'whatsapp:+' + toPhone,
-                'Body': message
-              })
-            });
-            break;
-            
-          case 'gupshup':
-            // Gupshup API call
-            response = await fetch('https://api.gupshup.io/sm/api/v1/msg', {
-              method: 'POST',
-              headers: {
-                'apikey': settings.api.apiKey,
-                'Content-Type': 'application/x-www-form-urlencoded'
-              },
-              body: new URLSearchParams({
-                'channel': 'whatsapp',
-                'source': fromPhone,
-                'destination': toPhone,
-                'message': JSON.stringify({ type: 'text', text: message }),
-                'src.name': settings.companyName
-              })
-            });
-            break;
-            
-          case 'messagebird':
-            // MessageBird API call
-            response = await fetch('https://conversations.messagebird.com/v1/send', {
-              method: 'POST',
-              headers: {
-                'Authorization': 'AccessKey ' + settings.api.apiKey,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                to: toPhone,
-                from: fromPhone,
-                type: 'text',
-                content: { text: message }
-              })
-            });
-            break;
-            
-          case 'custom':
-            // Custom API endpoint
-            response = await fetch(settings.api.apiEndpoint, {
-              method: 'POST',
-              headers: {
-                'Authorization': 'Bearer ' + settings.api.apiKey,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                to: toPhone,
-                from: fromPhone,
-                message: message,
-                apiSecret: settings.api.apiSecret
-              })
-            });
-            break;
-        }
-        
-        if (response && response.ok) {
-          showToast('Message sent successfully via ' + provider + '!', 'success');
-          return true;
-        } else {
-          throw new Error('API request failed');
-        }
-        
-      } catch (error) {
-        console.error('WhatsApp API Error:', error);
-        
-        // Check if it's a CORS/network error (common on localhost)
-        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-          showToast('⚠️ Local Testing: API blocked by browser. Opening WhatsApp manually...', 'error');
-        } else {
-          showToast('⚠️ API Error: ' + error.message + '. Opening WhatsApp manually...', 'error');
-        }
-        return false;
-      }
-    }
-
-    // Open WhatsApp (manual or API)
-    async function openWhatsApp(orderId) {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
-      // Check if API mode is enabled and configured
-      if (settings.api.autoSendEnabled && settings.api.provider !== 'manual') {
-        const sent = await sendWhatsAppViaAPI(order);
-        if (sent) return; // Message sent via API, no need to open WhatsApp
-      }
-      
-      // Fallback to manual mode (wa.me link)
-      const phone = order.customer_phone.replace(/[^0-9]/g, '');
-      const message = encodeURIComponent(getWhatsAppMessage(order));
-      const url = `https://wa.me/${phone}?text=${message}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
-      showToast('Opening WhatsApp...', 'success');
-    }
-
-    // Update statistics
-    function updateStats() {
-      const total = orders.length;
-      const active = orders.filter(o => o.status !== 'delivered').length;
-      const delivered = orders.filter(o => o.status === 'delivered').length;
-
-      document.getElementById('total-orders').textContent = total;
-      document.getElementById('active-orders').textContent = active;
-      document.getElementById('delivered-orders').textContent = delivered;
-    }
-
-    // Render orders
-    function renderOrders() {
-      const ordersList = document.getElementById('orders-list');
-      
-      if (orders.length === 0) {
-        ordersList.innerHTML = `
-          <div class="empty-state">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            <p>No orders yet. Create your first order!</p>
-          </div>
-        `;
-        updateStats();
-        return;
-      }
-
-      const sortedOrders = [...orders].sort((a, b) => 
-        new Date(b.created_at) - new Date(a.created_at)
-      );
-
-      ordersList.innerHTML = sortedOrders.map(order => `
-        <div class="order-card">
-          <div class="order-header">
-            <div class="order-info">
-              <h3>${order.customer_name}</h3>
-              <p>Order #${order.order_id}</p>
-            </div>
-            <span class="status-badge status-${order.status}">${order.status}</span>
-          </div>
-          
-          <div class="order-details">
-            <div class="detail-item">
-              <span class="detail-label">Product</span>
-              <span class="detail-value">${order.product_type}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Phone</span>
-              <span class="detail-value">${order.customer_phone}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Created</span>
-              <span class="detail-value">${formatDate(order.created_at)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Last Updated</span>
-              <span class="detail-value">${formatDate(order.last_updated)}</span>
-            </div>
-          </div>
-          
-          <div class="order-actions">
-            ${order.status !== 'delivered' ? `
-              <button class="btn btn-update btn-small" onclick="updateOrderStatus('${order.id}')">
-                Update Status
-              </button>
-            ` : ''}
-            <button class="btn btn-whatsapp btn-small" onclick="openWhatsApp('${order.id}')">
-              ${settings.api.autoSendEnabled && settings.api.provider !== 'manual' ? 'Send Message' : 'Send WhatsApp'}
-            </button>
-            <button class="btn btn-delete btn-small" onclick="deleteOrder('${order.id}')">
-              Delete
-            </button>
-          </div>
-        </div>
-      `).join('');
-
-      updateStats();
-    }
-
-    // Update order status
-    function updateOrderStatus(orderId) {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
-      const currentIndex = statusFlow.indexOf(order.status);
-      if (currentIndex === statusFlow.length - 1) {
-        showToast('Order already delivered!', 'error');
-        return;
-      }
-
-      const nextStatus = statusFlow[currentIndex + 1];
-      order.status = nextStatus;
-      order.last_updated = new Date().toISOString();
-
-      saveOrders(orders);
-      renderOrders();
-      showToast(`Status updated to ${nextStatus}!`, 'success');
-      
-      setTimeout(() => openWhatsApp(orderId), 500);
-    }
-
-    // Delete order
-    function deleteOrder(orderId) {
-      orders = orders.filter(o => o.id !== orderId);
-      saveOrders(orders);
-      renderOrders();
-      showToast('Order deleted successfully!', 'success');
-    }
-
-    // Export data
-    function exportData() {
-      const dataStr = JSON.stringify({ orders, settings }, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `signwale_orders_${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      showToast('Orders exported successfully!', 'success');
-    }
-
-    // Import data
-    function importData(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const data = JSON.parse(e.target.result);
-          if (data.orders) {
-            orders = data.orders;
-            saveOrders(orders);
-            renderOrders();
-          }
-          if (data.settings) {
-            settings = data.settings;
-            saveSettingsToStorage(settings);
-            updateSettingsUI();
-            initTheme();
-          }
-          showToast('Data imported successfully!', 'success');
-        } catch (error) {
-          showToast('Error importing data. Please check the file format.', 'error');
-        }
-      };
-      reader.readAsText(file);
-      event.target.value = '';
-    }
-
-    // Show clear confirmation
-    function showClearConfirmation() {
-      document.getElementById('clear-modal').classList.add('show');
-    }
-
-    // Hide clear confirmation
-    function hideClearConfirmation() {
-      document.getElementById('clear-modal').classList.remove('show');
-    }
-
-    // Clear all orders
-    function clearAllOrders() {
-      orders = [];
-      saveOrders(orders);
-      renderOrders();
-      hideClearConfirmation();
-      showToast('All orders cleared!', 'success');
-    }
-
-    // Tab switching
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const tabName = tab.dataset.tab;
-        
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
-        tab.classList.add('active');
-        document.getElementById(tabName).classList.add('active');
-      });
+    localOrders.forEach((order) => {
+      // create doc ref: preserve provided id if present, else create new doc
+      const docRef = order.id ? doc(db, "orders", order.id) : doc(ordersCollection);
+      batch.set(docRef, order);
     });
 
-    // Form submission
-    document.getElementById('order-form').addEventListener('submit', (e) => {
+    await batch.commit();
+  } catch (err) {
+    console.error('Failed to save orders to Firestore:', err);
+  }
+}
+
+// --- Local storage helper for settings ---
+function saveSettingsToStorage(s) {
+  try {
+    localStorage.setItem('signwale_settings', JSON.stringify(s));
+    // also attempt to save to Firestore (best-effort)
+    saveSettings(s);
+  } catch (e) {
+    console.error('Failed to save settings locally:', e);
+  }
+}
+
+function loadSettingsFromStorage() {
+  try {
+    const raw = localStorage.getItem('signwale_settings');
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.error('Failed to load settings from storage:', e);
+  }
+  return null;
+}
+
+// Try to load previously saved settings (fallback)
+const persisted = loadSettingsFromStorage();
+if (persisted) settings = { ...defaultSettings, ...persisted };
+
+// --- UI utilities ---
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  if (!toast) {
+    // fallback console
+    console.log(`${type.toUpperCase()}: ${message}`);
+    return;
+  }
+  toast.textContent = message;
+  toast.className = 'toast show ' + type;
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 4000);
+}
+
+function formatDate(isoString) {
+  if (!isoString) return '-';
+  const date = new Date(isoString);
+  if (isNaN(date)) return isoString;
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function generateOrderId() {
+  return 'SW' + Date.now().toString().slice(-8);
+}
+
+// --- Theme management ---
+function updateThemeIcon(theme) {
+  const themeToggle = document.querySelector('.theme-toggle');
+  if (!themeToggle) return;
+  themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+function initTheme() {
+  const theme = settings.theme || 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeIcon(theme);
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  settings.theme = newTheme;
+  saveSettingsToStorage(settings);
+  updateThemeIcon(newTheme);
+}
+
+// --- API field logic ---
+function toggleApiFields() {
+  const providerEl = document.getElementById('api-provider');
+  if (!providerEl) return;
+  const provider = providerEl.value;
+  const apiFields = document.getElementById('api-config-fields');
+  const endpointField = document.getElementById('endpoint-field');
+  const apiSecretField = document.getElementById('api-secret-field');
+  const apiPhoneField = document.getElementById('api-phone-field');
+  const autoSendCheckbox = document.getElementById('auto-send-enabled');
+  const apiKeyLabel = document.getElementById('api-key-label');
+  const apiKeyHelp = document.getElementById('api-key-help');
+
+  if (apiFields) apiFields.style.display = provider === 'manual' ? 'none' : 'block';
+  if (autoSendCheckbox) {
+    if (provider === 'manual') {
+      autoSendCheckbox.disabled = true;
+      autoSendCheckbox.checked = false;
+    } else {
+      autoSendCheckbox.disabled = false;
+    }
+  }
+
+  if (provider === 'periskope') {
+    if (apiKeyLabel) apiKeyLabel.textContent = 'Periskope API Key';
+    if (apiKeyHelp) apiKeyHelp.innerHTML = '🔑 Get your API key from <a href="https://console.periskope.app/" target="_blank" rel="noopener noreferrer" style="color: #667eea;">console.periskope.app</a>';
+    if (apiSecretField) apiSecretField.style.display = 'none';
+    if (apiPhoneField) apiPhoneField.style.display = 'none';
+    if (endpointField) endpointField.style.display = 'none';
+  } else {
+    if (apiKeyLabel) apiKeyLabel.textContent = 'API Key / Account SID';
+    if (apiKeyHelp) apiKeyHelp.textContent = 'Get your API key from the provider\'s dashboard';
+    if (apiSecretField) apiSecretField.style.display = 'block';
+    if (apiPhoneField) apiPhoneField.style.display = 'block';
+    if (provider === 'custom') {
+      if (endpointField) endpointField.style.display = 'block';
+    } else {
+      if (endpointField) endpointField.style.display = 'none';
+    }
+  }
+
+  updateApiStatus();
+}
+
+function toggleAutoSend() {
+  const provider = document.getElementById('api-provider')?.value;
+  const autoSend = document.getElementById('auto-send-enabled')?.checked;
+  if (provider === 'manual' && autoSend) {
+    const el = document.getElementById('auto-send-enabled');
+    if (el) el.checked = false;
+    showToast('Please configure an API provider first', 'error');
+  }
+}
+
+function updateApiStatus() {
+  const statusEl = document.getElementById('api-status');
+  if (!statusEl) return;
+  const provider = settings.api?.provider || 'manual';
+
+  if (provider === 'periskope' && settings.api?.apiKey) {
+    statusEl.textContent = 'configured';
+    statusEl.className = 'api-status connected';
+  } else if (provider !== 'manual' && provider !== 'periskope' && settings.api?.apiKey && settings.api?.apiPhone) {
+    statusEl.textContent = 'configured';
+    statusEl.className = 'api-status connected';
+  } else {
+    statusEl.textContent = provider === 'manual' ? 'manual mode' : 'not configured';
+    statusEl.className = 'api-status disconnected';
+  }
+}
+
+// --- Update UI with settings ---
+function updateSettingsUI() {
+  const headerTitle = document.querySelector('.header h1');
+  if (headerTitle) headerTitle.textContent = settings.companyName || defaultSettings.companyName;
+
+  const companyNameInput = document.getElementById('company-name-setting');
+  if (companyNameInput) companyNameInput.value = settings.companyName || defaultSettings.companyName;
+
+  const setMsg = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val || '';
+  };
+
+  setMsg('msg-confirmed', settings.messages?.confirmed);
+  setMsg('msg-manufacturing', settings.messages?.manufacturing);
+  setMsg('msg-ready', settings.messages?.ready);
+  setMsg('msg-shipped', settings.messages?.shipped);
+  setMsg('msg-delivered', settings.messages?.delivered);
+
+  const providerEl = document.getElementById('api-provider');
+  if (providerEl) providerEl.value = settings.api?.provider || 'manual';
+  const apiKeyEl = document.getElementById('api-key');
+  if (apiKeyEl) apiKeyEl.value = settings.api?.apiKey || '';
+  const apiSecretEl = document.getElementById('api-secret');
+  if (apiSecretEl) apiSecretEl.value = settings.api?.apiSecret || '';
+  const apiPhoneEl = document.getElementById('api-phone');
+  if (apiPhoneEl) apiPhoneEl.value = settings.api?.apiPhone || '';
+  const apiEndpointEl = document.getElementById('api-endpoint');
+  if (apiEndpointEl) apiEndpointEl.value = settings.api?.apiEndpoint || '';
+  const autoSendEl = document.getElementById('auto-send-enabled');
+  if (autoSendEl) autoSendEl.checked = settings.api?.autoSendEnabled || false;
+
+  toggleApiFields();
+  updateApiStatus();
+}
+
+// --- Orders UI and operations ---
+function updateStats() {
+  const total = orders.length;
+  const active = orders.filter(o => o.status !== 'delivered').length;
+  const delivered = orders.filter(o => o.status === 'delivered').length;
+
+  const totalEl = document.getElementById('total-orders');
+  const activeEl = document.getElementById('active-orders');
+  const deliveredEl = document.getElementById('delivered-orders');
+
+  if (totalEl) totalEl.textContent = total;
+  if (activeEl) activeEl.textContent = active;
+  if (deliveredEl) deliveredEl.textContent = delivered;
+}
+
+function renderOrders() {
+  const ordersList = document.getElementById('orders-list');
+  if (!ordersList) return;
+
+  if (!orders || orders.length === 0) {
+    ordersList.innerHTML = `
+      <div class="empty-state">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p>No orders yet. Create your first order!</p>
+      </div>
+    `;
+    updateStats();
+    return;
+  }
+
+  const sortedOrders = [...orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  ordersList.innerHTML = sortedOrders.map(order => `
+    <div class="order-card" data-order-id="${order.id}">
+      <div class="order-header">
+        <div class="order-info">
+          <h3>${order.customer_name}</h3>
+          <p>Order #${order.order_id}</p>
+        </div>
+        <span class="status-badge status-${order.status}">${order.status}</span>
+      </div>
+      <div class="order-details">
+        <div class="detail-item">
+          <span class="detail-label">Product</span>
+          <span class="detail-value">${order.product_type}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Phone</span>
+          <span class="detail-value">${order.customer_phone}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Created</span>
+          <span class="detail-value">${formatDate(order.created_at)}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Last Updated</span>
+          <span class="detail-value">${formatDate(order.last_updated)}</span>
+        </div>
+      </div>
+      <div class="order-actions">
+        ${order.status !== 'delivered' ? `<button class="btn btn-update btn-small" data-action="update" data-id="${order.id}">Update Status</button>` : ''}
+        <button class="btn btn-whatsapp btn-small" data-action="whatsapp" data-id="${order.id}">${settings.api?.autoSendEnabled && settings.api?.provider !== 'manual' ? 'Send Message' : 'Send WhatsApp'}</button>
+        <button class="btn btn-delete btn-small" data-action="delete" data-id="${order.id}">Delete</button>
+      </div>
+    </div>
+  `).join('');
+
+  // attach event listeners to the dynamically created buttons
+  ordersList.querySelectorAll('button[data-action]').forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (action === 'update') updateOrderStatus(id);
+      else if (action === 'whatsapp') openWhatsApp(id);
+      else if (action === 'delete') deleteOrder(id);
+    });
+  });
+
+  updateStats();
+}
+
+// Update order status
+function updateOrderStatus(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+
+  const currentIndex = statusFlow.indexOf(order.status);
+  if (currentIndex === statusFlow.length - 1) {
+    showToast('Order already delivered!', 'error');
+    return;
+  }
+
+  const nextStatus = statusFlow[currentIndex + 1];
+  order.status = nextStatus;
+  order.last_updated = new Date().toISOString();
+
+  // persist
+  saveOrdersToFirestore(orders);
+  renderOrders();
+  showToast(`Status updated to ${nextStatus}!`, 'success');
+
+  // send notification after short delay
+  setTimeout(() => openWhatsApp(orderId), 500);
+}
+
+// Delete order
+function deleteOrder(orderId) {
+  orders = orders.filter(o => o.id !== orderId);
+  saveOrdersToFirestore(orders);
+  renderOrders();
+  showToast('Order deleted successfully!', 'success');
+}
+
+// Export / Import
+function exportData() {
+  const dataStr = JSON.stringify({ orders, settings }, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `signwale_orders_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast('Orders exported successfully!', 'success');
+}
+
+function importData(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.orders) {
+        orders = data.orders;
+        saveOrdersToFirestore(orders);
+        renderOrders();
+      }
+      if (data.settings) {
+        settings = { ...defaultSettings, ...data.settings };
+        saveSettingsToStorage(settings);
+        updateSettingsUI();
+        initTheme();
+      }
+      showToast('Data imported successfully!', 'success');
+    } catch (error) {
+      showToast('Error importing data. Please check the file format.', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// Clear all orders confirmation
+function showClearConfirmation() {
+  const modal = document.getElementById('clear-modal');
+  if (modal) modal.classList.add('show');
+}
+
+function hideClearConfirmation() {
+  const modal = document.getElementById('clear-modal');
+  if (modal) modal.classList.remove('show');
+}
+
+function clearAllOrders() {
+  orders = [];
+  saveOrdersToFirestore(orders);
+  renderOrders();
+  hideClearConfirmation();
+  showToast('All orders cleared!', 'success');
+}
+
+// --- WhatsApp helpers ---
+function getWhatsAppMessage(order) {
+  const messageTemplate = settings.messages?.[order.status] || '';
+  return `Hello ${order.customer_name}! 🎉\n\n${settings.companyName} - Order Update\n\nOrder ID: ${order.order_id}\nProduct: ${order.product_type}\nStatus: ${order.status.toUpperCase()}\n\n${messageTemplate}\n\nThank you for choosing ${settings.companyName}!`;
+}
+
+async function sendWhatsAppViaAPI(order) {
+  const provider = settings.api?.provider || 'manual';
+  const message = getWhatsAppMessage(order);
+  const toPhone = (order.customer_phone || '').replace(/[^0-9]/g, '');
+  const fromPhone = (settings.api?.apiPhone || '').replace(/[^0-9]/g, '');
+
+  try {
+    let response;
+
+    switch (provider) {
+      case 'periskope':
+        response = await fetch('https://api.periskope.app/v1/message/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': "Bearer " + settings.api.apiKey,
+            'Content-Type': 'application/json',
+            'x-phone': '919606931023' // keep or replace with fromPhone if needed
+          },
+          body: JSON.stringify({
+            chat_id: `${toPhone}@whatsapp`,
+            message: message
+          })
+        });
+
+        if (response.ok) {
+          showToast('✅ Message sent via Periskope!', 'success');
+          return true;
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'API request failed');
+        }
+
+      case 'twilio':
+        response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${settings.api.apiKey}/Messages.json`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Basic ' + btoa(settings.api.apiKey + ':' + settings.api.apiSecret),
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            'From': 'whatsapp:+' + fromPhone,
+            'To': 'whatsapp:+' + toPhone,
+            'Body': message
+          })
+        });
+        break;
+
+      case 'gupshup':
+        response = await fetch('https://api.gupshup.io/sm/api/v1/msg', {
+          method: 'POST',
+          headers: {
+            'apikey': settings.api.apiKey,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: new URLSearchParams({
+            'channel': 'whatsapp',
+            'source': fromPhone,
+            'destination': toPhone,
+            'message': JSON.stringify({ type: 'text', text: message }),
+            'src.name': settings.companyName
+          })
+        });
+        break;
+
+      case 'messagebird':
+        response = await fetch('https://conversations.messagebird.com/v1/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'AccessKey ' + settings.api.apiKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            to: toPhone,
+            from: fromPhone,
+            type: 'text',
+            content: { text: message }
+          })
+        });
+        break;
+
+      case 'custom':
+        response = await fetch(settings.api.apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + settings.api.apiKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            to: toPhone,
+            from: fromPhone,
+            message: message,
+            apiSecret: settings.api.apiSecret
+          })
+        });
+        break;
+
+      default:
+        // manual or unknown provider
+        break;
+    }
+
+    if (response && response.ok) {
+      showToast('Message sent successfully via ' + provider + '!', 'success');
+      return true;
+    } else if (response) {
+      // attempt to read error
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || 'API request failed');
+    } else {
+      // no response (provider=manual)
+      return false;
+    }
+  } catch (error) {
+    console.error('WhatsApp API Error:', error);
+    if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+      showToast('⚠️ Local Testing: API blocked by browser. Opening WhatsApp manually...', 'error');
+    } else {
+      showToast('⚠️ API Error: ' + error.message + '. Opening WhatsApp manually...', 'error');
+    }
+    return false;
+  }
+}
+
+async function openWhatsApp(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+
+  if (settings.api?.autoSendEnabled && settings.api?.provider !== 'manual') {
+    const sent = await sendWhatsAppViaAPI(order);
+    if (sent) return;
+  }
+
+  // Fallback to manual wa.me link
+  const phone = (order.customer_phone || '').replace(/[^0-9]/g, '');
+  const message = encodeURIComponent(getWhatsAppMessage(order));
+  const url = `https://wa.me/${phone}?text=${message}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+  showToast('Opening WhatsApp...', 'success');
+}
+
+// Expose functions that may be used via inline onclick or from other scripts
+window.updateOrderStatus = updateOrderStatus;
+window.openWhatsApp = openWhatsApp;
+window.deleteOrder = deleteOrder;
+window.exportData = exportData;
+window.importData = importData;
+window.showClearConfirmation = showClearConfirmation;
+window.hideClearConfirmation = hideClearConfirmation;
+window.clearAllOrders = clearAllOrders;
+window.toggleTheme = toggleTheme;
+window.toggleApiFields = toggleApiFields;
+window.toggleAutoSend = toggleAutoSend;
+window.testApiConnection = async function testApiConnection() {
+  const provider = settings.api?.provider || 'manual';
+
+  if (provider === 'manual') {
+    showToast('Manual mode selected - no API to test', 'error');
+    return;
+  }
+
+  if (provider === 'periskope') {
+    if (!settings.api?.apiKey) {
+      showToast('Please enter your Periskope API key first', 'error');
+      return;
+    }
+  } else {
+    if (!settings.api?.apiKey || !settings.api?.apiPhone) {
+      showToast('Please configure API credentials first', 'error');
+      return;
+    }
+  }
+
+  showToast('Testing API connection...', 'success');
+
+  if (provider === 'periskope') {
+    try {
+      const response = await fetch('https://api.periskope.app/v1/account/verify', {
+        method: 'GET',
+        headers: {
+          'Authorization': "Bearer " + settings.api.apiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        showToast('✅ Periskope API connected successfully!', 'success');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        showToast('❌ API Error: ' + (errorData.message || 'Invalid API key'), 'error');
+      }
+    } catch (error) {
+      showToast('⚠️ CORS/Network Error: API calls work from deployed sites. For local testing, messages will open WhatsApp manually.', 'error');
+      console.log('API Test Error:', error.message);
+    }
+  } else {
+    setTimeout(() => {
+      showToast('⚠️ API Test: This is a demo. Configure your actual API credentials to send real messages.', 'error');
+    }, 1500);
+  }
+};
+
+// --- Form and UI event wiring after DOM ready ---
+document.addEventListener('DOMContentLoaded', () => {
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.dataset.tab;
+
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      tab.classList.add('active');
+      const content = document.getElementById(tabName);
+      if (content) content.classList.add('active');
+    });
+  });
+
+  // Order form
+  const orderForm = document.getElementById('order-form');
+  if (orderForm) {
+    orderForm.addEventListener('submit', (e) => {
       e.preventDefault();
 
       const orderData = {
         id: Date.now().toString(),
         order_id: generateOrderId(),
-        customer_name: document.getElementById('customer-name').value,
-        customer_phone: document.getElementById('customer-phone').value,
-        product_type: document.getElementById('product-type').value,
+        customer_name: document.getElementById('customer-name')?.value || 'Unknown',
+        customer_phone: document.getElementById('customer-phone')?.value || '',
+        product_type: document.getElementById('product-type')?.value || '',
         status: 'confirmed',
         created_at: new Date().toISOString(),
         last_updated: new Date().toISOString()
       };
 
       orders.push(orderData);
-      saveOrders(orders);
-      
+      saveOrdersToFirestore(orders);
+
       showToast('Order created successfully!', 'success');
-      document.getElementById('order-form').reset();
-      
+      orderForm.reset();
+
       // Switch to orders tab
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector('[data-tab="orders"]').classList.add('active');
-      document.getElementById('orders').classList.add('active');
-      
+      const ordersTab = document.querySelector('[data-tab="orders"]');
+      if (ordersTab) ordersTab.classList.add('active');
+      const ordersContent = document.getElementById('orders');
+      if (ordersContent) ordersContent.classList.add('active');
+
       renderOrders();
-      
+
       setTimeout(() => openWhatsApp(orderData.id), 500);
     });
+  }
 
-    // Initialize
-    initTheme();
-    updateSettingsUI();
-    renderOrders();
-  </script>
+  // Import file input
+  const importInput = document.getElementById('import-file');
+  if (importInput) importInput.addEventListener('change', importData);
+
+  // API provider change
+  const apiProvider = document.getElementById('api-provider');
+  if (apiProvider) apiProvider.addEventListener('change', (e) => {
+    settings.api = settings.api || {};
+    settings.api.provider = e.target.value;
+    saveSettingsToStorage(settings);
+    toggleApiFields();
+  });
+
+  // Theme toggle (if any)
+  const themeToggle = document.querySelector('.theme-toggle');
+  if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+
+  // Init UI
+  initTheme();
+  updateSettingsUI();
+  renderOrders();
+});
+
+// --- Firestore subscriptions (update app state when remote changes) ---
+subscribeToSettings((s) => {
+  // merge remote settings with defaults but keep local override
+  settings = { ...defaultSettings, ...settings, ...s };
+  saveSettingsToStorage(settings); // keep a local copy
+  updateSettingsUI();
+  initTheme();
+});
+
+subscribeToOrders((remoteOrders) => {
+  // If remote orders change, use them (but avoid wiping local unsaved edits is out of scope)
+  orders = Array.isArray(remoteOrders) ? remoteOrders : [];
+  renderOrders();
+});
+</script>
+
   
  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99ce573425c17fa8',t:'MTc2Mjg2OTg4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
  </body>
