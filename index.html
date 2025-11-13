@@ -761,19 +761,21 @@
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
 import { getFirestore, collection, doc, onSnapshot, setDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
-};
+ const firebaseConfig = {
+    apiKey: "AIzaSyDrh-L6R8e-OuUirs0hQmfTbN1v1ShccMg",
+    authDomain: "signwale-c81bf.firebaseapp.com",
+    projectId: "signwale-c81bf",
+    storageBucket: "signwale-c81bf.firebasestorage.app",
+    messagingSenderId: "848802151725",
+    appId: "1:848802151725:web:3e33c46f128ab72c5667a4",
+    measurementId: "G-5CMSJ0DWJY"
+  };
+
 
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getFirestore(app);
+
 
 const settingsDoc = doc(db, "settings", "current");
 const ordersCollection = collection(db, "orders");
@@ -819,8 +821,8 @@ subscribeToOrders((orders) => {
 
 
 
-</script>
-  <script>
+
+
     // Default settings
     const defaultSettings = {
       companyName: "Signwale",
