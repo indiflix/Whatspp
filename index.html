@@ -632,38 +632,14 @@
     }
   </style>
   <style>@view-transition { navigation: auto; }</style>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
-
+  <script src="https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js"></script>
   <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
   <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
   <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
  </head>
  <body>
- <script>
-  const firebaseConfig = {
-  apiKey: "AIzaSyDrh-L6R8e-OuUirs0hQmfTbN1v1ShccMg",
-  authDomain: "signwale-c81bf.firebaseapp.com",
-  projectId: "signwale-c81bf",
-  storageBucket: "signwale-c81bf.firebasestorage.app",
-  messagingSenderId: "848802151725",
-  appId: "1:848802151725:web:3e33c46f128ab72c5667a4",
-  measurementId: "G-5CMSJ0DWJY"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
-    // Example: Reading/Writing data to Firebase realtime database
-    database.ref('trackedCustomers/').on('value', (snapshot) => {
-        const data = snapshot.val();
-        // Update your UI here with data
-    });
-
-    function saveCustomerData(customerData) {
-      database.ref('trackedCustomers/').set(customerData);
-    }
-</script>
+ 
   <div class="container">
    <header class="header"><img src="./logo.png" alt="Company Logo" class="logo" onerror="this.style.display='none';"> <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
     <h1>Signwale</h1>
@@ -805,30 +781,72 @@ const analytics = getAnalytics(app);
 
     // Status flow
     const statusFlow = ['confirmed', 'manufacturing', 'ready', 'shipped', 'delivered'];
+    
 
-    // Load settings from localStorage
-    function loadSettings() {
-      database.ref('settings/').on('value', (snapshot) => { const data = snapshot.val(); /* update UI with data */ });
-    }
+const firebaseConfig = {
+  apiKey: "AIzaSyDrh-L6R8e-OuUirs0hQmfTbN1v1ShccMg",
+  authDomain: "signwale-c81bf.firebaseapp.com",
+  projectId: "signwale-c81bf",
+  storageBucket: "signwale-c81bf.firebasestorage.app",
+  messagingSenderId: "848802151725",
+  appId: "1:848802151725:web:3e33c46f128ab72c5667a4",
+  measurementId: "G-5CMSJ0DWJY"
+};
 
-    // Save settings to localStorage
-    function saveSettingsToStorage(settings) {
-     database.ref('settings/').set(settings);
-    }
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore(app);
+const settingsRef = db.collection("settings").doc("current");
+const ordersRef = db.collection("orders");
+let settings = {};
+let orders = [];
 
-    // Load orders from localStorage
-    function loadOrders() {
-     database.ref('orders/').on('value', (snapshot) => { const data = snapshot.val(); /* update UI */ });
-    }
+function subscribeToSettings(updateCallback) {
+  settingsRef.onSnapshot(doc => {
+    updateCallback(doc.data() || {});
+  });
+}
 
-    // Save orders to localStorage
-    function saveOrders(orders) {
-      database.ref('orders/').set(orders);
-    }
+function saveSettings(newSettings) {
+  settingsRef.set(newSettings).catch(console.error);
+}
 
-    // Initialize settings
-    let settings = loadSettings();
-    let orders = loadOrders();
+function subscribeToOrders(updateCallback) {
+  ordersRef.onSnapshot(snapshot => {
+    let newOrders = [];
+    snapshot.forEach(doc => newOrders.push({ id: doc.id, ...doc.data() }));
+    updateCallback(newOrders);
+  });
+}
+
+function saveOrders(newOrders) {
+  ordersRef.get().then(snapshot => {
+    let batch = db.batch();
+    snapshot.forEach(doc => batch.delete(doc.ref));
+    newOrders.forEach(order => {
+      const docRef = order.id ? ordersRef.doc(order.id) : ordersRef.doc();
+      batch.set(docRef, order);
+    });
+    return batch.commit();
+  }).catch(console.error);
+}
+
+subscribeToSettings(function(newSettings) {
+  settings = newSettings;
+  onSettingsUpdated(settings);
+});
+
+subscribeToOrders(function(newOrders) {
+  orders = newOrders;
+  onOrdersUpdated(orders);
+});
+
+function onSettingsUpdated(newSettings) {
+  console.log("Settings updated:", newSettings);
+}
+
+function onOrdersUpdated(newOrders) {
+  console.log("Orders updated:", newOrders);
+}
 
     // Theme management
     function toggleTheme() {
@@ -1429,7 +1447,9 @@ const analytics = getAnalytics(app);
     updateSettingsUI();
     renderOrders();
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99ce573425c17fa8',t:'MTc2Mjg2OTg4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+  
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99ce573425c17fa8',t:'MTc2Mjg2OTg4Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+ </body>
 
 </html>
 
